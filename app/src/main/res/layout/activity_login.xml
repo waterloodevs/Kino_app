@@ -2,25 +2,35 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:background="@color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:orientation="vertical"
-        android:paddingLeft="24dp"
-        android:paddingTop="56dp"
-        android:paddingRight="24dp">
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:orientation="vertical">
 
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="72dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="24dp"
-            android:src="@drawable/favicon" />
+        <!--<ImageView-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="72dp"-->
+        <!--android:layout_gravity="center_horizontal"-->
+        <!--android:layout_marginBottom="24dp"-->
+        <!--android:src="@drawable/favicon" />-->
 
         <!-- Email Label -->
+        <TextView
+            android:id="@+id/textView9"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="Kino"
+            android:textColor="@color/common_google_signin_btn_text_dark_focused"
+            android:textSize="50sp"
+            android:textStyle="bold" />
+
         <android.support.design.widget.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -56,8 +66,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp"
+            android:background="@color/black"
             android:padding="12dp"
-            android:text="Login" />
+            android:text="Login"
+            android:textColor="@android:color/white" />
 
         <TextView
             android:id="@+id/emailCreateAccountButton"
@@ -65,7 +77,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
             android:gravity="center"
-            android:text="Don't have an account yet? Sign Up"
+            android:text="New user? Sign Up"
             android:textSize="16dip" />
 
     </LinearLayout>
