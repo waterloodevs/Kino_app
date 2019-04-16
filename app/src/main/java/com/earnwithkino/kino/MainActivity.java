@@ -1,7 +1,10 @@
 package com.earnwithkino.kino;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.Fragment;
@@ -11,8 +14,12 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -34,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    public static final String BASE_URL = "";
     private static final String STUB_APP_ID = "k1n0";
     private static final int APP_INDEX = 0;
     private static final int PRECISION = 0;
@@ -45,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private KinClient kinClient;
     public KinAccount account;
 
-    public String kinBalance;
+    public String kinBalance = "0";
 
     public ListenFromActivity activityListener;
 
@@ -61,8 +69,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        kinBalance = "0";
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -95,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onStart() {
         super.onStart();
-        // Check if user is signed in (non-null) and update UI accordingly.
+        // Check if user is signed in (non-null)
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser == null){
             startLoginActivity();
@@ -110,6 +116,10 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected Balance doInBackground(KinAccount... kinAccounts) {
+
+            //Before you can deliver the notification on Android 8.0 and higher, you
+            // must register your app's notification channel with the system
+            createNotificationChannel();
 
             // If account was just created, submit to blockchain
             // In production send account's public address to backend
@@ -127,7 +137,9 @@ public class MainActivity extends AppCompatActivity {
             publishProgress("Adding balance listeners...");
             addBalanceListeners(account);
 
-            publishProgress("Setting balance to variable...");
+            // Getting FCM token
+            publishProgress("Getting Fcm token...");
+            getFcmToken();
             return balance;
         }
 
@@ -140,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Balance balance) {
             super.onPostExecute(balance);
+            Toast.makeText(getApplicationContext(), "Setting balance to variable...", Toast.LENGTH_SHORT).show();
             setKinBalance(balance);
         }
 
@@ -232,6 +245,38 @@ public class MainActivity extends AppCompatActivity {
                     });
                 }
             });
+        }
+
+        private void getFcmToken(){
+            FirebaseInstanceId.getInstance().getInstanceId()
+                    .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                            if (!task.isSuccessful()) {
+                                Log.w(TAG, "getInstanceId failed", task.getException());
+                                return;
+                            }
+                            // Get new Instance ID token
+                            String fcmToken = task.getResult().getToken();
+                            Log.d(TAG, "FCM Token: " + fcmToken);
+                        }
+                    });
+        }
+
+        private void createNotificationChannel() {
+            // Create the NotificationChannel, but only on API 26+ because
+            // the NotificationChannel class is new and not in the support library
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                CharSequence name = "Kino";
+                String description = "Kino notification";
+                int importance = NotificationManager.IMPORTANCE_DEFAULT;
+                NotificationChannel channel = new NotificationChannel("Kino_channel_ID", name, importance);
+                channel.setDescription(description);
+                // Register the channel with the system; you can't change the importance
+                // or other notification behaviors after this
+                NotificationManager notificationManager = getSystemService(NotificationManager.class);
+                notificationManager.createNotificationChannel(channel);
+            }
         }
 
     }

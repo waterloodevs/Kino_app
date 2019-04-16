@@ -1,5 +1,6 @@
 package com.earnwithkino.kino;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -23,6 +24,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -36,7 +38,6 @@ import static android.support.constraint.Constraints.TAG;
 
 public class BuyActivity extends Fragment implements View.OnClickListener {
 
-    private OkHttpClient okHttpClient;
     private ImageView backPressed;
     private EditText emailView;
     private RadioGroup radioGroup;
@@ -83,6 +84,7 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
         // Check the user has sufficient balance
 
 
+
         return true;
 
 
@@ -106,25 +108,38 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
 
     private void buyGiftCard(){
 
+        String BASE_URL = MainActivity.BASE_URL;
+        String route = "";
+        String token = MyFirebaseMessagingService.getToken(getContext());
+
         // Get order information
         int selectedId = radioGroup.getCheckedRadioButtonId();
         RadioButton radioButton = getView().findViewById(selectedId);
         String amount = radioButton.getText().toString();
         String email = emailView.getText().toString();
         String quantity = quantityView.getText().toString();
+        String type = "Amazon";
 
         // Send request to backend, returns whitelisted transaction
         RequestBody data = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
+                .addFormDataPart("type", type)
                 .addFormDataPart("amount", amount)
                 .addFormDataPart("email", email)
                 .addFormDataPart("quantity", quantity)
                 .build();
 
         Request request = new Request.Builder()
+                .addHeader("Authorization", "Token " + token)
                 .url(BASE_URL + route)
                 .post(data)
                 .build();
+
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
+                .build();
+
         okHttpClient.newCall(request)
                 .enqueue(new Callback() {
                     @Override
