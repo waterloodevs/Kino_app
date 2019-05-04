@@ -11,8 +11,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:allowBackup">
-        <activity android:name=".SettingsActivity"></activity>
-        <activity android:name=".WalletActivity" />
+        <activity android:name=".WalletActivity"></activity>
+        <activity android:name=".SignupActivity" />
+        <activity android:name=".SettingsActivity" />
+        <activity android:name=".BalanceActivity" />
         <activity android:name=".MainActivity" />
         <activity android:name=".BuyActivity" />
         <activity android:name=".StoreActivity" />
@@ -24,6 +26,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
 
         <service
             android:name=".MyFirebaseMessagingService"

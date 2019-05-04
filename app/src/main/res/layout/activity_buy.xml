@@ -371,7 +371,15 @@
                     android:id="@+id/total"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0k"
+                    android:text="0"
+                    android:textAppearance="@style/TextAppearance.AppCompat"
+                    android:textSize="18sp" />
+
+                <TextView
+                    android:id="@+id/kinsymbol"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" Kin"
                     android:textAppearance="@style/TextAppearance.AppCompat"
                     android:textSize="18sp" />
 

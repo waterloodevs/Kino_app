@@ -12,34 +12,45 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 
-public class StoreActivity extends Fragment implements View.OnClickListener {
+public class BalanceActivity extends Fragment implements MainActivity.ListenFromActivity, View.OnClickListener {
 
-    private MainActivity parentActivity;
+    private TextView balance;
     private ImageView info;
     private PopupWindow popupWindow;
-    private ImageView amazonGiftCard;
+    private MainActivity parentActivity;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View fragmentView = inflater.inflate(R.layout.activity_store, container, false);
+        View fragmentView = inflater.inflate(R.layout.activity_balance, container, false);
         parentActivity = (MainActivity) getActivity();
+        balance = fragmentView.findViewById(R.id.balanceView);
         info = fragmentView.findViewById(R.id.info);
         info.setOnClickListener(this);
-        amazonGiftCard = fragmentView.findViewById(R.id.imageView3);
-        amazonGiftCard.setOnClickListener(this);
+        // Since changes to balances are updated in the main activity, set a listener
+        parentActivity.setActivityListener(this);
+        setKinBalance();
         return fragmentView;
     }
 
-    private void showPopup() {
-        // inflate the layout of the popup window
-        LayoutInflater inflater = (LayoutInflater) parentActivity.getSystemService(LAYOUT_INFLATER_SERVICE);
-        View popupView = inflater.inflate(R.layout.spend_popup_window, null);
+    public void doSomethingInFragment() {
+        setKinBalance();
+    }
 
-        // create the popup window
+    private void setKinBalance() {
+        balance.setText(parentActivity.kinBalance);
+    }
+
+    private void showPopup(){
+        // Inflate the layout of the popup window
+        LayoutInflater inflater = (LayoutInflater) parentActivity.getSystemService(LAYOUT_INFLATER_SERVICE);
+        View popupView = inflater.inflate(R.layout.earn_popup_window, null);
+
+        // Create the popup window
         int width = LinearLayout.LayoutParams.WRAP_CONTENT;
         int height = LinearLayout.LayoutParams.WRAP_CONTENT;
         boolean focusable = true; // lets taps outside the popup to dismiss it
@@ -57,21 +68,14 @@ public class StoreActivity extends Fragment implements View.OnClickListener {
             }
         });
 
-        // show the popup window
-        // which view you pass in doesn't matter, it is only used for the window tolken
+        // Show the popup window
+        // Which view you pass in doesn't matter, it is only used for the window token
         popupWindow.showAtLocation(info, Gravity.CENTER, 0, 0);
     }
 
-    @Override
     public void onClick(View view) {
         if (view == info) {
             showPopup();
-        } else if (view == amazonGiftCard) {
-            Fragment fragment = new BuyActivity();
-            View container = parentActivity.findViewById(R.id.fragment_container);
-            parentActivity.getSupportFragmentManager().beginTransaction()
-                    .replace(container.getId(), fragment, "findThisFragment")
-                    .commit();
         }
     }
 
