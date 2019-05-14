@@ -31,6 +31,13 @@ public class SignupActivity extends BaseActivity implements View.OnClickListener
     private TextView emailSignInButton;
     private Button emailSignUpButton;
 
+    public void onConnectivityChanged(boolean isConnected) {
+        // Handle connectivity change
+        if (!isConnected){
+            startNoInternetConnectionActivity(this);
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,8 +114,8 @@ public class SignupActivity extends BaseActivity implements View.OnClickListener
         backgroundTasks.execute(credentials);
     }
 
-    private void handleSignUpError(){
-        Toast.makeText(this, "Sign Up Failed. Please try again.", Toast.LENGTH_SHORT).show();
+    private void handleSignUpError(String error){
+        Toast.makeText(this, "Sign Up Failed. " + error, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -129,6 +136,7 @@ public class SignupActivity extends BaseActivity implements View.OnClickListener
     private static class ExampleAsyncTask extends AsyncTask<Map, String, Void> {
 
         private boolean success = false;
+        private String error = null;
         private WeakReference<SignupActivity> activityWeakReference;
         private ExampleAsyncTask(SignupActivity activity){
             activityWeakReference = new WeakReference<>(activity);
@@ -161,29 +169,29 @@ public class SignupActivity extends BaseActivity implements View.OnClickListener
                 activity.sendUserToServer();
                 success = true;
             } catch (ExecutionException | TimeoutException | InterruptedException | IOException e) {
-                //TODO: handle different types of execution exceptions
-                Throwable ee = e.getCause ();
-                if (!(ee instanceof FirebaseAuthUserCollisionException)){
-                    // delete the user in case it was signed up and setidtoken or sendusertoserver failed
-                    FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-                    if (user != null) {
-                        try{
-                            Tasks.await(user.delete(), 20, TimeUnit.SECONDS);
-                        } catch (ExecutionException | TimeoutException | InterruptedException eee) {
-                            //TODO: handle different types of execution exceptions
-                            //TODO: how to handle if can't delete user
-                        }
+                // Delete the user in case it was signed up and setidtoken or sendusertoserver failed
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user != null) {
+                    try{
+                        Tasks.await(user.delete(), 20, TimeUnit.SECONDS);
+                    } catch (ExecutionException | TimeoutException | InterruptedException eee) {
+                        //TODO: handle different types of execution exceptions
+                        //TODO: how to handle if can't delete user
                     }
+                }
+                try {
+                    error = e.getCause().getMessage();
+                } catch (Exception ee){
+                    error = e.getMessage();
                 }
                 return null;
             }
             // Send fcm token to server asynchronously
-            publishProgress("Sending fcm token to server...");
             activity.enableFCM();
             activity.setFCMToken();
             // Get and store Kin price per dollar asynchronously
-            publishProgress("fetching kin price...");
-            activity.setKinPrice();
+//            publishProgress("fetching kin price...");
+//            activity.setKinPrice();
             return null;
         }
 
@@ -210,7 +218,7 @@ public class SignupActivity extends BaseActivity implements View.OnClickListener
             if (success){
                 activity.startWalletActivity(activity);
             } else{
-                activity.handleSignUpError();
+                activity.handleSignUpError(error);
             }
         }
     }

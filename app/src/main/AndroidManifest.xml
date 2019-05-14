@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.earnwithkino.kino">
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -11,18 +13,14 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:allowBackup">
-        <activity android:name=".WalletActivity"></activity>
+        <activity android:name=".NoInternetConnection"></activity>
+        <activity android:name=".WalletActivity" />
         <activity android:name=".SignupActivity" />
-        <activity android:name=".SettingsActivity" />
-        <activity android:name=".BalanceActivity" />
         <activity android:name=".MainActivity" />
-        <activity android:name=".BuyActivity" />
-        <activity android:name=".StoreActivity" />
         <activity android:name=".LoginActivity" />
         <activity android:name=".SplashActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

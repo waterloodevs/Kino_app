@@ -27,6 +27,13 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener{
     private Button emailSignInButton;
     private TextView emailSignUpButton;
 
+    public void onConnectivityChanged(boolean isConnected) {
+        // Handle connectivity change
+        if (!isConnected){
+            startNoInternetConnectionActivity(this);
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,8 +98,8 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener{
         backgroundTasks.execute(credentials);
     }
 
-    private void handleSignInError(){
-        Toast.makeText(this, "Sign In Failed. Please try again.", Toast.LENGTH_SHORT).show();
+    private void handleSignInError(String error){
+        Toast.makeText(this, "Sign In Failed. " + error, Toast.LENGTH_SHORT).show();
     }
 
     @Override
@@ -107,6 +114,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener{
     private static class ExampleAsyncTask extends AsyncTask<Map, String, Void> {
 
         private boolean success = false;
+        private String error = null;
         private WeakReference<LoginActivity> activityWeakReference;
         private ExampleAsyncTask(LoginActivity activity){
             activityWeakReference = new WeakReference<>(activity);
@@ -138,16 +146,19 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener{
                 activity.setIdtoken();
                 success = true;
             } catch (ExecutionException | TimeoutException | InterruptedException e) {
-                //TODO: handle different types of execution exceptions
+                try {
+                    error = e.getCause().getMessage();
+                } catch (Exception ee){
+                    error = e.getMessage();
+                }
                 return null;
             }
             // Send fcm token to server asynchronously
-            publishProgress("Sending fcm token to server...");
             activity.enableFCM();
             activity.setFCMToken();
             // Get and store Kin price per dollar asynchronously
-            publishProgress("Fetching kin price...");
-            activity.setKinPrice();
+//            publishProgress("Fetching kin price...");
+//            activity.setKinPrice();
             return null;
         }
 
@@ -173,7 +184,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener{
             if (success){
                 activity.startWalletActivity(activity);
             } else{
-                activity.handleSignInError();
+                activity.handleSignInError(error);
             }
         }
     }

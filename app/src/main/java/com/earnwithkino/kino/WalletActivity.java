@@ -29,10 +29,16 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
     private FirebaseUser currentUser;
     private boolean walletExistsFlag = false;
 
+    public void onConnectivityChanged(boolean isConnected) {
+        // Handle connectivity change
+        if (!isConnected){
+            startNoInternetConnectionActivity(this);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         currentUser = getCurrentUser();
         String uid = currentUser.getUid();
         // Kin client is the manager for Kin accounts
@@ -73,8 +79,8 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
         }
     }
 
-    private void handleWalletError(){
-        Toast.makeText(this, "Wallet creation failed. Please try again later.", Toast.LENGTH_SHORT).show();
+    private void handleWalletError(String error){
+        Toast.makeText(this, "Wallet creation failed. " + error, Toast.LENGTH_SHORT).show();
     }
 
     public void onClick(View v) {
@@ -116,6 +122,7 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
                 }
             } catch (OperationFailedException e) {
                 //TODO: how to handle if can't check if wallet exists..
+                // Maybe a 404 page
             }
             return null;
         }
@@ -154,6 +161,7 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
 
     private static class CreateAndOnboardAsyncTask extends AsyncTask<Void, Void, Void> {
 
+        private String error = null;
         private WeakReference<WalletActivity> activityWeakReference;
         private CreateAndOnboardAsyncTask(WalletActivity activity) {
             activityWeakReference = new WeakReference<>(activity);
@@ -182,6 +190,11 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
                 activity.onBoardAccount(account);
                 activity.walletExistsFlag = true;
             } catch (CreateAccountException | IOException e){
+                try {
+                    error = e.getCause().getMessage();
+                } catch (Exception ee){
+                    error = e.getMessage();
+                }
                 return null;
             }
             return null;
@@ -198,7 +211,7 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
             if (activity.walletExistsFlag){
                 activity.startMainActivity(activity);
             } else{
-                activity.handleWalletError();
+                activity.handleWalletError(error);
             }
         }
     }

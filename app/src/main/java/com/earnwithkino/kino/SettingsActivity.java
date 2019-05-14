@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
 
@@ -22,7 +23,7 @@ import static android.content.Context.MODE_PRIVATE;
 public class SettingsActivity extends Fragment implements View.OnClickListener {
 
     private MainActivity parentActivity;
-    private TextView address;
+    private TextView email;
     private Button logout;
 
     @Nullable
@@ -30,10 +31,10 @@ public class SettingsActivity extends Fragment implements View.OnClickListener {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View fragmentView = inflater.inflate(R.layout.activity_settings, container, false);
         parentActivity = (MainActivity) getActivity();
-        address = fragmentView.findViewById(R.id.textView7);
+        email = fragmentView.findViewById(R.id.textView7);
         logout = fragmentView.findViewById(R.id.button2);
         logout.setOnClickListener(this);
-        setAddress();
+        setEmail();
         return fragmentView;
     }
 
@@ -49,9 +50,9 @@ public class SettingsActivity extends Fragment implements View.OnClickListener {
         }
     }
 
-    public void setAddress() {
-        KinAccount account = parentActivity.account;
-        address.setText(account.getPublicAddress());
+    public void setEmail() {
+        FirebaseUser currentUser = parentActivity.getCurrentUser();
+        email.setText(currentUser.getEmail());
     }
 
     private void disableFCM(){

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -44,7 +45,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public abstract class BaseActivity extends AppCompatActivity{
+public abstract class BaseActivity extends AppCompatActivity implements ConnectivityChangeReceiver.OnConnectivityChangedListener {
 
     public static final String BASE_URL = "http://0c0c2136.ngrok.io";
     public static final String URL_CREATE_ACCOUNT = "http://friendbot-testnet.kininfrastructure.com?addr=%s&amount=";
@@ -52,10 +53,24 @@ public abstract class BaseActivity extends AppCompatActivity{
     public static final int APP_INDEX = 0;
     private ProgressDialog mProgressDialog;
     private OkHttpClient okHttpClient;
+    private ConnectivityChangeReceiver connectivityChangeReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        connectivityChangeReceiver = new ConnectivityChangeReceiver(this);
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        registerReceiver(connectivityChangeReceiver, filter);
+    }
+
+    @Override
+    public abstract void onConnectivityChanged(boolean isConnected);
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(connectivityChangeReceiver);
     }
 
     public FirebaseAuth getFirebaseInstance(){
@@ -185,45 +200,45 @@ public abstract class BaseActivity extends AppCompatActivity{
         }
     }
 
-    public void setKinPrice(){
-        String route = "/spend_price_per_dollar";
-        String token = getIdToken();
-        Request request = new Request.Builder()
-                .addHeader("Authorization", "Token " + token)
-                .url(BASE_URL + route)
-                .get()
-                .build();
-        okHttpClient = getOkHttpClient();
-        okHttpClient.newCall(request)
-                .enqueue(new Callback() {
-                    @Override
-                    public void onFailure(Call call, IOException e) {
-                        //TODO: Error handling. "Kin price call failed"
-                    }
-
-                    @Override
-                    public void onResponse(Call call, Response response) {
-                        final int code = response.code();
-                        if (code != 200) {
-                            //TODO: Error handling. "Kin Price call failed with response code: "
-                        } else {
-                            try{
-                                String body = response.body().string();
-                                JSONObject data = new JSONObject(body);
-                                int price = Integer.parseInt(data.getString("price"));
-                                //TODO: Error handling. "Kin Price is " + data.getString("price"));
-                                getSharedPreferences("_", MODE_PRIVATE).edit().putInt("price", price).apply();
-                                //TODO: Error handling. "Kin price stored successfully");
-                            } catch (JSONException e){
-                                e.printStackTrace();
-                            } catch (IOException e){
-                                e.printStackTrace();
-                            }
-                        }
-                        response.close();
-                    }
-                });
-    }
+//    public void setKinPrice(){
+//        String route = "/spend_price_per_dollar";
+//        String token = getIdToken();
+//        Request request = new Request.Builder()
+//                .addHeader("Authorization", "Token " + token)
+//                .url(BASE_URL + route)
+//                .get()
+//                .build();
+//        okHttpClient = getOkHttpClient();
+//        okHttpClient.newCall(request)
+//                .enqueue(new Callback() {
+//                    @Override
+//                    public void onFailure(Call call, IOException e) {
+//                        //TODO: Error handling. "Kin price call failed"
+//                    }
+//
+//                    @Override
+//                    public void onResponse(Call call, Response response) {
+//                        final int code = response.code();
+//                        if (code != 200) {
+//                            //TODO: Error handling. "Kin Price call failed with response code: "
+//                        } else {
+//                            try{
+//                                String body = response.body().string();
+//                                JSONObject data = new JSONObject(body);
+//                                int price = Integer.parseInt(data.getString("price"));
+//                                //TODO: Error handling. "Kin Price is " + data.getString("price"));
+//                                getSharedPreferences("_", MODE_PRIVATE).edit().putInt("price", price).apply();
+//                                //TODO: Error handling. "Kin price stored successfully");
+//                            } catch (JSONException e){
+//                                e.printStackTrace();
+//                            } catch (IOException e){
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                        response.close();
+//                    }
+//                });
+//    }
 
     public KinAccount getKinAccount(KinClient kinClient) throws CreateAccountException{
         // The index that is used to get a specific account from the client manager
@@ -234,9 +249,9 @@ public abstract class BaseActivity extends AppCompatActivity{
         return kinAccount;
     }
 
-    public int getKinPrice(){
-        return getSharedPreferences("_", MODE_PRIVATE).getInt("price", 0);
-    }
+//    public int getKinPrice(){
+//        return getSharedPreferences("_", MODE_PRIVATE).getInt("price", 0);
+//    }
 
     public void startLoginActivity(Context context){
         startActivity(new Intent(context, LoginActivity.class));
@@ -258,6 +273,12 @@ public abstract class BaseActivity extends AppCompatActivity{
 
     public void startWalletActivity(Context context){
         startActivity(new Intent(context, WalletActivity.class));
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+        ((Activity) context).finish();
+    }
+
+    public void startNoInternetConnectionActivity(Context context){
+        startActivity(new Intent(context, NoInternetConnection.class));
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
         ((Activity) context).finish();
     }

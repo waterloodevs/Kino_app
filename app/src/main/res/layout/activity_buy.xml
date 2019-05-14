@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white"
     tools:context=".BuyActivity">
 
     <LinearLayout
@@ -31,9 +32,7 @@
             android:layout_marginStart="20dp"
             android:gravity="center_horizontal|center_vertical"
             android:text="Purchase"
-            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-            android:textColor="@color/black"
-            android:textSize="24sp"
+            android:textAppearance="@style/TextAppearance.AppCompat.Headline"
             android:textStyle="bold" />
 
     </LinearLayout>

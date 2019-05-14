@@ -32,6 +32,13 @@ public class MainActivity extends BaseActivity {
     public ListenFromActivity activityListener;
     public String kinBalance = "0";
 
+    public void onConnectivityChanged(boolean isConnected) {
+        // Handle connectivity change
+        if (!isConnected){
+            startNoInternetConnectionActivity(this);
+        }
+    }
+
     public interface ListenFromActivity {
         void doSomethingInFragment();
     }
@@ -115,9 +122,14 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    private void handleKinBalanceError(String error){
+        Toast.makeText(this, "Unable to fetch Kin balance. " + error, Toast.LENGTH_SHORT).show();
+    }
+
     private static class ExampleAsyncTask extends AsyncTask<KinAccount, String, Void> {
 
         private Balance balance = null;
+        private String error = null;
         private WeakReference<MainActivity> activityWeakReference;
         private ExampleAsyncTask(MainActivity activity){
             activityWeakReference = new WeakReference<>(activity);
@@ -135,6 +147,11 @@ public class MainActivity extends BaseActivity {
                 balance = account.getBalanceSync();
             } catch (OperationFailedException e){
                 //TODO: how to handle if couldnt get balance
+                try {
+                    error = e.getCause().getMessage();
+                } catch (Exception ee){
+                    error = e.getMessage();
+                }
             }
             return null;
         }
@@ -162,9 +179,9 @@ public class MainActivity extends BaseActivity {
                 activity.setKinBalance(balance);
             } else {
                 //TODO: how to handle if couldn't get balance
+                activity.handleKinBalanceError(error);
             }
         }
-
     }
 
     private BottomNavigationView.OnNavigationItemSelectedListener navListener =
