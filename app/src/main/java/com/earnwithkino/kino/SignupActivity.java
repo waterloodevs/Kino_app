@@ -165,7 +165,7 @@ public class SignupActivity extends BaseActivity implements View.OnClickListener
             try {
                 FirebaseAuth mAuth = activity.getFirebaseInstance();
                 Tasks.await(mAuth.createUserWithEmailAndPassword(email, password), 15, TimeUnit.SECONDS);
-                activity.setIdtoken();
+//                activity.setIdtoken();
                 activity.sendUserToServer();
                 success = true;
             } catch (ExecutionException | TimeoutException | InterruptedException | IOException e) {

@@ -13,12 +13,14 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:allowBackup">
-        <activity android:name=".NoInternetConnection"></activity>
-        <activity android:name=".WalletActivity" />
+        <activity android:name=".RedeemActivity"/>
+        <activity android:name=".ProfileActivity" />
+        <activity android:name=".TestActivity" />
+        <activity android:name=".NoInternetConnection" />
         <activity android:name=".SignupActivity" />
-        <activity android:name=".MainActivity" />
         <activity android:name=".LoginActivity" />
-        <activity android:name=".SplashActivity">
+        <activity android:name=".WalletActivity" />
+        <activity android:name=".SplashActivity" android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

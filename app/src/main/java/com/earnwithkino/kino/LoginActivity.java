@@ -143,7 +143,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener{
             try {
                 FirebaseAuth mAuth = activity.getFirebaseInstance();
                 Tasks.await(mAuth.signInWithEmailAndPassword(email, password), 15, TimeUnit.SECONDS);
-                activity.setIdtoken();
+//                activity.setIdtoken();
                 success = true;
             } catch (ExecutionException | TimeoutException | InterruptedException e) {
                 try {

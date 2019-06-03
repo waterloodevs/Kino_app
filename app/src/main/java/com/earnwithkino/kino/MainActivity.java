@@ -15,6 +15,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import kin.sdk.Balance;
 import kin.sdk.Environment;
@@ -60,7 +62,8 @@ public class MainActivity extends BaseActivity {
                 .replace(R.id.fragment_container, new BalanceActivity())
                 .commit();
 
-        // Before you can deliver the notification on Android 8.0 and higher, you
+        // Before you can deliver the notificat
+        // ion on Android 8.0 and higher, you
         // must register your app's notification channel with the system
         createNotificationChannel();
 
@@ -80,8 +83,8 @@ public class MainActivity extends BaseActivity {
     @Override
     public void onStart() {
         super.onStart();
-        // Check if user is signed in, id token exists
-        if ((currentUser == null) || (getIdToken() == null)){
+        // Check if user is signed in
+        if (currentUser == null){
             startLoginActivity(this);
         }
         // TODO: also check somehow if wallet stops existing (on device or on blockchain)
@@ -208,11 +211,6 @@ public class MainActivity extends BaseActivity {
                 }
             };
 
-    public void signOut(){
-        FirebaseAuth mAuth = getFirebaseInstance();
-        mAuth.signOut();
-        startLoginActivity(this);
-    }
 
     @Override
     public void onStop() {

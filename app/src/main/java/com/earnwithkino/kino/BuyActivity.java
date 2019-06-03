@@ -4,9 +4,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -23,11 +25,18 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.auth.FirebaseAuth;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -43,6 +52,9 @@ import static android.support.constraint.Constraints.TAG;
 
 public class BuyActivity extends Fragment implements View.OnClickListener {
 
+    private int PRICE = 100;
+
+    private MainActivity parentActivity;
     private ImageView backPressed;
     private EditText emailView;
     private RadioGroup radioGroup;
@@ -55,14 +67,14 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
     private ImageView minus;
     private TextView totalView;
     private Button confirm;
-    private int price;
-    private OkHttpClient okHttpClient;
+
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View fragmentView = inflater.inflate(R.layout.activity_buy, container, false);
-        ((MainActivity) getActivity()).nav.setVisibility(View.GONE);
+        parentActivity = (MainActivity) getActivity();
+        parentActivity.nav.setVisibility(View.GONE);
         backPressed = fragmentView.findViewById(R.id.back);
         emailView = fragmentView.findViewById(R.id.emailView);
         radioGroup = fragmentView.findViewById(R.id.radioGroup);
@@ -70,9 +82,9 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
         option2 = fragmentView.findViewById(R.id.radioButton2);
         option3 = fragmentView.findViewById(R.id.radioButton3);
         selected = null;
-        price = getContext().getSharedPreferences("_", MODE_PRIVATE).getInt("price", 0);
+//        price = getContext().getSharedPreferences("_", MODE_PRIVATE).getInt("price", 0);
         //TODO: Ensure Kin price is not zero, if it is, something went wrong when trying to fetch and store it. Do it again.
-        Toast.makeText(getActivity(), "Price is " + price, Toast.LENGTH_SHORT).show();
+//        Toast.makeText(getActivity(), "Price is " + price, Toast.LENGTH_SHORT).show();
         confirm = fragmentView.findViewById(R.id.confirm);
         plus = fragmentView.findViewById(R.id.plus);
         minus = fragmentView.findViewById(R.id.minus);
@@ -85,13 +97,12 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
         option1.setOnClickListener(this);
         option2.setOnClickListener(this);
         option3.setOnClickListener(this);
-
-        okHttpClient = new OkHttpClient.Builder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .build();
-
         return fragmentView;
+    }
+
+    private void handleError(String error){
+        parentActivity.hideProgressDialog();
+        Toast.makeText(parentActivity, error, Toast.LENGTH_SHORT).show();
     }
 
     private boolean validateForm() {
@@ -99,37 +110,35 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
         // check Email
         String email = emailView.getText().toString();
         if (TextUtils.isEmpty(email)) {
-            Toast.makeText(getActivity(), "Email is required", Toast.LENGTH_SHORT).show();
+            handleError("Email is required.");
             return false;
         }
 
         // check amount
         if (selected == null) {
-            Toast.makeText(getActivity(), "Amount is required", Toast.LENGTH_SHORT).show();
+            handleError("Amount is required");
             return false;
         }
 
         // check quantity
         String quantity = quantityView.getText().toString();
         if (TextUtils.isEmpty(quantity)) {
-            Toast.makeText(getActivity(), "Quantity is required", Toast.LENGTH_SHORT).show();
+            handleError("Quantity is required.");
             return false;
         }
 
         // Check the user has sufficient balance
-        int balance = Integer.parseInt(((MainActivity) getActivity()).kinBalance);
+        int balance = Integer.parseInt(parentActivity.kinBalance);
         int total = Integer.parseInt(totalView.getText().toString());
         if (total > balance){
-            Toast.makeText(getActivity(), "You do not have enough Kin :(", Toast.LENGTH_SHORT).show();
+            handleError("Sorry, you do not have enough Kin.");
             return false;
-        } else if (total < 0) {
-            Toast.makeText(getActivity(), "Total cannot be zero or less. Something went wrong.", Toast.LENGTH_SHORT).show();
+        } else if (total <= 0) {
+            handleError("Something went wrong. Please try again.");
             return false;
         }
 
         return true;
-
-
     }
 
     private void addToQuantity() {
@@ -150,15 +159,20 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
 
     private void buyGiftCard(){
 
-        String BASE_URL = MainActivity.BASE_URL;
         String route = "/buy_giftcard";
-        String token = getContext().getSharedPreferences("_", MODE_PRIVATE).getString("token", null);
+        String token;
+        try {
+            token = parentActivity.getIdToken();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            handleError("Unexpected error. Please try again later.");
+            return;
+        }
 
         // Get order information
+        String type = "Amazon";
         String amount = selected.getText().toString().replace("$", "");
         String email = emailView.getText().toString();
         String quantity = quantityView.getText().toString();
-        String type = "Amazon";
         String total = totalView.getText().toString();
 
         // Send request to backend, returns whitelisted transaction
@@ -171,37 +185,60 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
             json.put("quantity", quantity);
             json.put("total", total);
         } catch (JSONException e){
-            e.printStackTrace();
+            handleError("Unexpected error. Please try again later.");
         }
 
         RequestBody data = RequestBody.create(JSON, json.toString());
 
         Request request = new Request.Builder()
                 .addHeader("Authorization", "Token " + token)
-                .url(BASE_URL + route)
+                .url(BaseActivity.BASE_URL + route)
                 .post(data)
+                .build();
+
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
                 .build();
 
         okHttpClient.newCall(request)
                 .enqueue(new Callback() {
                     @Override
                     public void onFailure(Call call, IOException e) {
-                        Log.d(TAG, "Buy call failed");
+                        String error = null;
+                        try {
+                            error = e.getCause().getMessage();
+                        } catch (Exception ee){
+                            error = e.getMessage();
+                        }
+                        handleError(error);
                     }
-
                     @Override
                     public void onResponse(Call call, Response response) {
                         final int code = response.code();
                         response.close();
                         if (code != 200) {
-                            Log.d(TAG, "Buy call failed with response code: " + code);
+                            parentActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    handleError("Unexpected error. Please try again later.");
+                                }
+                            });
                         } else {
-                            Log.d(TAG, "Gift card bought successfully");
+                            parentActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    AlertDialog.Builder diolog = new AlertDialog.Builder(parentActivity);
+                                    diolog.setTitle("Success");
+                                    diolog.setMessage("Thank you for your purchase. You will receive an email with your e-giftcard within 48 hours.");
+                                    AlertDialog alertDialog = diolog.create();
+                                    alertDialog.show();
+                                    parentActivity.hideProgressDialog();
+                                }
+                            });
                         }
                     }
                 });
-
-
     }
 
     private void calcTotal(){
@@ -210,19 +247,26 @@ public class BuyActivity extends Fragment implements View.OnClickListener {
             amount = Integer.parseInt(selected.getText().toString().replace("$", ""));
         }
         int quantity = Integer.parseInt(quantityView.getText().toString());
-        int total = amount * quantity * price;
+        int total = amount * quantity * PRICE;
         totalView.setText(String.valueOf(total));
     }
 
+    private void startStoreFragment(){
+        Fragment fragment = new StoreActivity();
+        View container = parentActivity.findViewById(R.id.fragment_container);
+        parentActivity.getSupportFragmentManager().beginTransaction()
+                .replace(container.getId(), fragment, "findThisFragment")
+                .commit();
+    }
 
     @Override
     public void onClick(View view) {
         if (view == backPressed) {
-            ((MainActivity) getActivity()).nav.setVisibility(View.VISIBLE);
-            getFragmentManager().popBackStackImmediate();
+            parentActivity.nav.setVisibility(View.VISIBLE);
+            startStoreFragment();
         } else if (view == confirm) {
+            parentActivity.showProgressDialog();
             if (validateForm()) {
-                Toast.makeText(getActivity(), "Valid Purchase", Toast.LENGTH_SHORT).show();
                 buyGiftCard();
             }
         } else if (view == plus) {

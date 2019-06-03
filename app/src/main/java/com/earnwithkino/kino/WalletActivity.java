@@ -4,12 +4,20 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import kin.sdk.AccountStatus;
 import kin.sdk.Environment;
@@ -18,8 +26,11 @@ import kin.sdk.KinClient;
 import kin.sdk.exception.CreateAccountException;
 import kin.sdk.exception.OperationFailedException;
 
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class WalletActivity extends BaseActivity implements View.OnClickListener {
@@ -28,6 +39,7 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
     private Button createWalletButton;
     private FirebaseUser currentUser;
     private boolean walletExistsFlag = false;
+    private ImageView backButton;
 
     public void onConnectivityChanged(boolean isConnected) {
         // Handle connectivity change
@@ -52,13 +64,15 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
     public void onStart() {
         super.onStart();
         // Check if user is signed in, id token exists
-        if ((currentUser == null) || (getIdToken() == null)){
+        if (currentUser == null){
             startLoginActivity(this);
         }
     }
 
     private void init(){
         setContentView(R.layout.activity_wallet);
+        backButton = findViewById(R.id.backButton);
+        backButton.setOnClickListener(this);
         createWalletButton = findViewById(R.id.createWalletButton);
         createWalletButton.setOnClickListener(this);
         //TODO: if a user signs into another device, their existing wallet on the old device will no longer receive earned kin. Show a warning here. The post request should return a custom code indicating that a public address already existed, continuing will override the old wallet.
@@ -66,15 +80,31 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
     }
 
     private void onBoardAccount(KinAccount account) throws IOException{
+        String route = "/onboard_account";
+        String token;
+        try {
+            token = getIdToken();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            throw new IOException();
+        }
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject json = new JSONObject();
+        try {
+            json.put("public_address", account.getPublicAddress());
+        } catch (JSONException e){
+            throw new IOException();
+        }
+        RequestBody data = RequestBody.create(JSON, json.toString());
         Request request = new Request.Builder()
-                .url(String.format(URL_CREATE_ACCOUNT, account.getPublicAddress()))
-                .get()
+                .addHeader("Authorization", "Token " + token)
+                .url(BASE_URL + route)
+                .post(data)
                 .build();
         OkHttpClient okHttpClient = getOkHttpClient();
         Response response = okHttpClient.newCall(request).execute();
         final int code = response.code();
         response.close();
-        if (code != 200){
+        if (code != 201){
             throw new IOException();
         }
     }
@@ -83,10 +113,31 @@ public class WalletActivity extends BaseActivity implements View.OnClickListener
         Toast.makeText(this, "Wallet creation failed. " + error, Toast.LENGTH_SHORT).show();
     }
 
+    private void disableFCM(){
+        FirebaseMessaging.getInstance().setAutoInitEnabled(false);
+        // Detach fcm token, so user does not get any more notifications.
+        // The sever still has the old fcm token but once the user logs in again, it will be
+        // overwritten on the server.
+        new Thread(() -> {
+            try {
+                FirebaseInstanceId.getInstance().deleteInstanceId();
+            } catch (IOException e){
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
     public void onClick(View v) {
         if (v == createWalletButton) {
             CreateAndOnboardAsyncTask task = new CreateAndOnboardAsyncTask(this);
             task.execute();
+        } else if (v == backButton){
+            // Disable FCM auto initialization
+            disableFCM();
+            // Delete all shared preferences (price and token)
+            getSharedPreferences("_", MODE_PRIVATE).edit().clear().apply();
+            // Sign out
+            signOut();
         }
     }
 

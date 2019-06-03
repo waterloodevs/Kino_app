@@ -16,6 +16,10 @@ import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 import android.widget.RadioButton;
 
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
@@ -23,7 +27,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -35,6 +41,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import static android.support.constraint.Constraints.TAG;
+import static com.earnwithkino.kino.BaseActivity.BASE_URL;
 
 /**
  * NOTE: There can only be one service in each app that receives FCM messages. If multiple
@@ -72,12 +79,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
             Log.d(TAG, "Message data payload: " + remoteMessage.getData());
-            String type = remoteMessage.getData().get("type");
-            if (type.equals("New Earn")) {
-                sendNotification(remoteMessage);
-            } else if (type.equals("New Price")) {
-                //setKinPrice();
-            }
+            sendNotification(remoteMessage);
         }
 
         // Check if message contains a notification payload.
@@ -97,7 +99,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
 
         CharSequence textTitle = remoteMessage.getData().get("title");
-        CharSequence textContent = remoteMessage.getData().get("content");
+        CharSequence textContent = remoteMessage.getData().get("body");
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "Kino_channel_ID")
                 .setSmallIcon(R.drawable.favicon)
                 .setContentTitle(textTitle)
@@ -126,7 +128,76 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // If you want to send messages to this application instance or
         // manage this apps subscriptions on the server side, send the
         // Instance ID token to your app server.
-        //sendFCMTokenToServer(fcmToken);
+        sendFCMTokenToServer(fcmToken);
+    }
+
+    public FirebaseAuth getFirebaseInstance(){
+        return FirebaseAuth.getInstance();
+    }
+
+    public FirebaseUser getCurrentUser(){
+        FirebaseAuth mAuth = getFirebaseInstance();
+        return mAuth.getCurrentUser();
+    }
+
+    public String getIdToken() throws ExecutionException, InterruptedException, TimeoutException{
+        FirebaseUser currentUser = getCurrentUser();
+        GetTokenResult result = Tasks.await(currentUser.getIdToken(true), 60, TimeUnit.SECONDS);
+        return result.getToken();
+    }
+
+    public OkHttpClient getOkHttpClient(){
+        return new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
+    }
+
+    public void sendFCMTokenToServer(String fcmToken) {
+
+        String route = "/update_fcm_token";
+        String token;
+        try {
+            token = getIdToken();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            return;
+        }
+
+        MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+        JSONObject json = new JSONObject();
+        try {
+            json.put("android_fcm_token", fcmToken);
+        } catch (JSONException e){
+            e.printStackTrace();
+            return;
+        }
+        RequestBody data = RequestBody.create(JSON, json.toString());
+
+        Request request = new Request.Builder()
+                .addHeader("Authorization", "Token " + token)
+                .url(BASE_URL + route)
+                .post(data)
+                .build();
+
+        OkHttpClient okHttpClient = getOkHttpClient();
+        okHttpClient.newCall(request)
+                .enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        //TODO: Error handling. "Token post to server call failed"
+                    }
+                    @Override
+                    public void onResponse(Call call, Response response) {
+                        final int code = response.code();
+                        response.close();
+                        if (code != 201) {
+                            //TODO: Error handling. "Token post to server failed with response code: "
+                        } else {
+                            //TODO: Error handling. "Token posted to server successfully"
+                        }
+                    }
+                });
+
     }
 
 //    /**

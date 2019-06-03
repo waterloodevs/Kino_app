@@ -47,8 +47,8 @@ import okhttp3.Response;
 
 public abstract class BaseActivity extends AppCompatActivity implements ConnectivityChangeReceiver.OnConnectivityChangedListener {
 
-    public static final String BASE_URL = "http://0c0c2136.ngrok.io";
-    public static final String URL_CREATE_ACCOUNT = "http://friendbot-testnet.kininfrastructure.com?addr=%s&amount=";
+    public static final String BASE_URL = "http://3f6c0903.ngrok.io";
+    public static final String KINO_PUBLIC_ADDRESS = "GCFEL2AKYJFFNSPDA6CVCD3T3BHD6LZBQLGT5RYP4ZT6WAH42PZ5YNZN6";
     public static final String STUB_APP_ID = "k1n0";
     public static final int APP_INDEX = 0;
     private ProgressDialog mProgressDialog;
@@ -84,8 +84,8 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
 
     public OkHttpClient getOkHttpClient(){
         return new OkHttpClient.Builder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
                 .build();
     }
 
@@ -108,13 +108,15 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
     public void setIdtoken() throws ExecutionException, InterruptedException, TimeoutException{
         //TODO: handle different types of execution exceptions
         FirebaseUser currentUser = getCurrentUser();
-        GetTokenResult result = Tasks.await(currentUser.getIdToken(true), 20, TimeUnit.SECONDS);
+        GetTokenResult result = Tasks.await(currentUser.getIdToken(true), 60, TimeUnit.SECONDS);
         String token = result.getToken();
         getSharedPreferences("_", MODE_PRIVATE).edit().putString("token", token).apply();
     }
 
-    public String getIdToken(){
-        return getSharedPreferences("_", MODE_PRIVATE).getString("token", null);
+    public String getIdToken() throws ExecutionException, InterruptedException, TimeoutException{
+        FirebaseUser currentUser = getCurrentUser();
+        GetTokenResult result = Tasks.await(currentUser.getIdToken(true), 60, TimeUnit.SECONDS);
+        return result.getToken();
     }
 
     public void enableFCM() {
@@ -140,7 +142,12 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
     public void sendFCMTokenToServer(String fcmToken) {
 
         String route = "/update_fcm_token";
-        String token = getIdToken();
+        String token;
+        try {
+            token = getIdToken();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            return;
+        }
 
         MediaType JSON = MediaType.parse("application/json; charset=utf-8");
         JSONObject json = new JSONObject();
@@ -148,6 +155,7 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
             json.put("android_fcm_token", fcmToken);
         } catch (JSONException e){
             e.printStackTrace();
+            return;
         }
         RequestBody data = RequestBody.create(JSON, json.toString());
 
@@ -180,7 +188,12 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
 
     public void sendUserToServer() throws IOException{
         String route = "/register";
-        String token = getIdToken();
+        String token;
+        try {
+            token = getIdToken();
+        } catch (ExecutionException | TimeoutException | InterruptedException e) {
+            throw new IOException();
+        }
         // Send user to backend
         RequestBody data = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
@@ -266,7 +279,19 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
     }
 
     public void startMainActivity(Context context){
-        startActivity(new Intent(context, MainActivity.class));
+        startActivity(new Intent(context, TestActivity.class));
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+        ((Activity) context).finish();
+    }
+
+    public void startProfileActivity(Context context){
+        startActivity(new Intent(context, ProfileActivity.class));
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+        ((Activity) context).finish();
+    }
+
+    public void startRedeemActivity(Context context){
+        startActivity(new Intent(context, RedeemActivity.class));
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
         ((Activity) context).finish();
     }
@@ -283,4 +308,9 @@ public abstract class BaseActivity extends AppCompatActivity implements Connecti
         ((Activity) context).finish();
     }
 
+    public void signOut(){
+        FirebaseAuth mAuth = getFirebaseInstance();
+        mAuth.signOut();
+        startLoginActivity(this);
+    }
 }
